@@ -1,0 +1,137 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=24mm,headheight=15pt]{geometry}
+\usepackage{fontspec,unicode-math}
+\setmainfont{Liberation Serif}
+\setsansfont{Liberation Sans}
+\setmonofont[Scale=0.85]{DejaVu Sans Mono}
+\setmathfont[Path=/usr/share/texlive/texmf-dist/fonts/opentype/public/stix2-otf/]{STIXTwoMath-Regular.otf}
+\usepackage{graphicx,booktabs,array,multirow,longtable,enumitem,fancyhdr,caption,needspace,xcolor,hyperref,titlesec,amsmath,microtype}
+\definecolor{navy}{HTML}{183247}
+\definecolor{teal}{HTML}{217E78}
+\definecolor{slate}{HTML}{526778}
+\definecolor{line}{HTML}{D6E2E3}
+\hypersetup{colorlinks=true,linkcolor=teal,urlcolor=teal}
+\titleformat{\section}{\sffamily\large\bfseries\color{navy}}{\thesection}{.8em}{}
+\titleformat{\subsection}{\sffamily\normalsize\bfseries\color{teal}}{\thesubsection}{.8em}{}
+\titlespacing*{\section}{0pt}{18pt}{7pt}
+\titlespacing*{\subsection}{0pt}{11pt}{4pt}
+\captionsetup{font=small,labelfont={bf,color=navy},textfont={color=slate},skip=5pt}
+\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\footnotesize\sffamily\color{slate} OTHELLO / REVERSI --- C++ PROJECT REPORT}\fancyhead[R]{\footnotesize\sffamily\color{slate} TECHNICAL PORTFOLIO}\fancyfoot[C]{\footnotesize\thepage}\renewcommand{\headrulewidth}{0.3pt}
+\setlength{\emergencystretch}{1.6em}\setlength{\parskip}{5pt}\setlength{\parindent}{0pt}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\figdir}{figures/}
+\begin{document}
+\thispagestyle{empty}
+\vspace*{12mm}
+{\sffamily\bfseries\color{teal}\large SOFTWARE ENGINEERING / GAME LOGIC}\par\vspace{9mm}
+{\sffamily\bfseries\color{navy}\fontsize{24}{30}\selectfont Othello (Reversi)}\par\vspace{3mm}
+{\sffamily\fontsize{16}{20}\selectfont Game Logic, C++ Architecture, and Testing}\par\vspace{12mm}
+{\large\color{slate} Technical and Academic Project Report}\par\vspace{4mm}
+\rule{\linewidth}{1.2pt}\par\vspace{8mm}
+\begin{tabular}{@{}>{\bfseries}p{34mm}p{115mm}@{}}
+Author & Hannaneh Sadat Ahmadi \\
+Source & Original submitted C++ class and explanatory project notes \\
+Project type & Undergraduate object-oriented programming exercise \\
+Portfolio scope & Unmodified original source plus independently developed, tested C++17 extension \\
+\end{tabular}
+\vfill
+\begin{center}\includegraphics[width=0.37\linewidth]{\figdir initial-board.png}\\[2mm]
+{\footnotesize\color{slate} Diagram reconstructed from the board initialization in the original C++ source.}
+\end{center}
+\newpage
+\section*{Abstract}
+This report examines an undergraduate implementation of the two-player board game Othello (also called Reversi) using the C++ programming language. The original submission models an $8\times8$ board, initializes the four central discs, keeps track of the current player and disc counts, checks candidate moves in eight directions, and flips the discs enclosed by a legal move. The review identifies several correctness and completeness limitations in the original source, particularly in end-of-game handling and array-boundary checks. To make the work reproducible as a software portfolio, a distinct C++17 implementation has been added without modifying the original file. Its game engine supports legal-move generation, directional flips, pass turns, game termination, final scoring, and console interaction. A self-contained test suite checks opening moves and state invariants and executes 25 deterministic complete-game simulations. This document separates the submitted code from the subsequent portfolio extension and reports only observations supported by source inspection or actual test execution.
+
+\textbf{Keywords:} Othello; Reversi; C++; object-oriented programming; algorithm design; two-dimensional board; unit testing.
+
+\section{Introduction and Objectives}
+Othello is a deterministic, turn-based, perfect-information strategy game played on a board containing 64 cells. In a two-player match, each player places a disc with the objective of enclosing opposing discs between the newly placed disc and another disc of the same color. Every enclosed disc flips to the current player's color. The game is useful as an instructional problem because a compact set of rules generates nontrivial spatial-search and state-management requirements.
+
+The original project's practical objectives, as evidenced by the submitted source, were to create a class-based game representation, display a console board, validate coordinates and directional captures, update the board after moves, alternate turns, and maintain a running count of black and white discs. The accompanying short notes describe the motivation for using a \code{vector} board and outline the role of the main class methods. No graphical user interface, artificial-intelligence opponent, or networked gameplay appears in the supplied implementation.
+
+\section{Rules and State Representation}
+\subsection{Initial configuration}
+The original code uses a nested \code{vector<vector<char>\,>} and stores three symbols: \code{'B'} for black, \code{'W'} for white and \code{'-'} for an unoccupied cell. The board starts with black discs in the positions (4,4) and (5,5), and white discs in (4,5) and (5,4), with all coordinates expressed as 1-based row and column indices. Black plays first. Disc counts are initially $N_B=N_W=2$.
+
+\begin{figure}[htbp]\centering\includegraphics[width=.58\linewidth]{\figdir initial-board.png}\caption{Initial board reconstructed from the original constructor.}\end{figure}
+
+The original class stores the active-player marker (1 or $-1$), a winner field, and a hash map for disc counts. An unordered map does not sort entries by their scores: it simply associates disc colors with integer totals. The short explanatory notes describe it as a ranking mechanism, but the C++ container itself performs no such ordering.
+
+\subsection{Formal legality condition}
+A candidate move at location $(r,c)$ for color $p$ is legal if the cell is empty and at least one of the eight direction vectors $d=(d_r,d_c)$, with $d_r,d_c\in\{-1,0,1\}$ and $d\ne (0,0)$, contains one or more consecutive opponent discs followed by a disc of the current player, all within the board. Define the set of directionally captured cells as $F_d(r,c,p)$. The move is legal exactly when
+\begin{equation}
+\operatorname{Legal}(r,c,p)\iff \operatorname{Empty}(r,c)\;\land\; \bigcup_{d\in D}F_d(r,c,p)\neq\varnothing.
+\end{equation}
+Placing a disc updates the destination and every member of the union of captured cells. The board remains $8\times8$, and each valid placement increases the number of occupied cells by one.
+
+\begin{figure}[htbp]\centering\includegraphics[width=.82\linewidth]{\figdir directional-scan.png}\caption{Illustrative horizontal scan: the two intermediate white discs are captured by a black placement when terminated by another black disc.}\end{figure}
+
+\section{Analysis of the Original C++ Implementation}
+\subsection{Class organization}
+The source defines a class \code{Othello} containing the board, player state, winner field and count map. The constructor initializes the board and the central discs. The private method \code{checkFlip} tests a potential capture along a selected direction, while \code{changeCoins} applies color changes and updates the counts. Public methods \code{isValidMove} and \code{makeMove} perform eight directional checks; \code{displayBoard} renders the board; \code{getPlayer}, \code{getOppPlayer} and \code{getWinner} expose state information. The \code{main} function repeatedly requests a row and column and attempts to place a disc.
+
+\subsection{Key findings}
+\begin{table}[htbp]\centering\small
+\begin{tabular}{@{}p{32mm}p{61mm}p{55mm}@{}}\toprule
+Area & Observation from supplied source & Engineering implication\\\midrule
+Board initialization & A temporary row vector is not cleared before the next row is appended. & Allocated row sizes grow although the console displays only eight columns.\\
+Directional scanning & The next array cell can be read after an increment without first checking the updated coordinates. & Risk of out-of-bounds memory access near edges.\\
+Move validation & Eight scanning directions and empty-destination checks are implemented. & Intended Othello capture rule is largely represented.\\
+Turn management & Players alternate after \code{makeMove}. & No legal-move pass handling.\\
+End of game & \code{isGameOver()} always returns \code{false}. & The normal game loop does not terminate.\\
+Winner evaluation & The winner field is initialized but never updated. & The final winner cannot be determined correctly.\\
+Input handling & Stream extraction assumes valid integer input. & Malformed input and end-of-file are not handled robustly.\\\bottomrule
+\end{tabular}\caption{Source-based audit findings. No undocumented behavior is inferred.}\end{table}
+
+The original text uses non-breaking spacing characters. For a compile-oriented inspection, those spacing characters were normalized in a temporary copy, without altering the control logic. The full original content is preserved verbatim under \code{archive/original\_submission.txt}. The archive should be treated as a historical source, not as a production-ready executable.
+
+\section{Separate C++17 Portfolio Extension}
+The additional implementation is explicitly distinct from the original coursework. It uses a fixed-size \code{std::array<std::array<Cell,8>,8>} to match the invariant board size, an enumeration to represent each cell, a pure directional-capture function, and a game engine separated from the text interface. The public API includes \code{legal\_moves}, \code{is\_legal}, \code{play}, \code{pass}, \code{is\_over}, \code{count} and \code{outcome}.
+
+\subsection{Directional capture and move application}
+Every prospective empty square is scanned along eight directions. For a direction, the algorithm collects consecutive opponent discs until either reaching the player's own disc, an empty cell or the edge of the board. A line contributes flips only when at least one opponent disc is followed by the current player's own disc.
+
+\begin{equation}
+B_{t+1}=\operatorname{Apply}\bigl(B_t,\,(r,c),\,\textstyle\bigcup_{d\in D}F_d(r,c,p)\bigr).
+\end{equation}
+For a move flipping $k$ opponent discs, the current player receives $k+1$ additional discs and the opponent loses $k$. Consequently, the number of occupied squares increases by exactly one and the total count never exceeds 64.
+
+\subsection{Pass and termination rules}
+If the active player has no legal move while the opponent still has at least one, the current player passes. The game is over once both players have no available legal move, including the case where the board is completely full. At termination, the player with the greater number of discs wins; equal counts give a draw. These rules are implemented only in the separate portfolio extension, not in the submitted original code.
+
+\section{Illustrative Game State Transition}
+From the original opening configuration, Black can legally play at 1-based position $(3,5)$. The move captures the white disc at $(4,5)$ along the downward direction. The resulting disc counts are $N_B=4$ and $N_W=1$, after which White receives the turn.
+
+\begin{figure}[htbp]\centering\includegraphics[width=.58\linewidth]{\figdir first-legal-move.png}\caption{Example state transition of the tested C++17 extension after Black plays row 3, column 5; the placed disc and flipped disc are outlined.}\end{figure}
+
+\section{Software Verification}
+\subsection{Test environment and procedure}
+The portfolio extension was compiled using a C++17-compatible compiler through CMake and executed with a dedicated C++ assertion-based test program. The verification used a \emph{Debug} build with the address and undefined-behavior sanitizers enabled. The suite checks initial placement, known legal and illegal moves, an opening flip, active-player transitions, the prohibition on unnecessary passes, and 25 complete deterministic simulated games. Within each simulation, the occupied-cell count is asserted to remain between 4 and 64, every selected move is legal, and the game eventually reaches a terminal outcome. The tests exercise a selected sample of game sequences, not every theoretically possible game state.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{@{}p{65mm}p{65mm}p{20mm}@{}}\toprule
+Test group & Expected property & Result\\\midrule
+Initial board & Two black, two white, four legal moves per side & Pass\\
+Invalid inputs & Boundary and occupied-cell moves rejected & Pass\\
+Opening move & Black (3,5) produces 4 black and 1 white & Pass\\
+Turn progression & Legal play changes active player & Pass\\
+Pass guard & Passing is refused when a legal move exists & Pass\\
+Simulated complete games & 25 seeded runs reach a game outcome & Pass\\\bottomrule
+\end{tabular}\caption{Observed automated tests on the separately developed C++17 engine; not tests of the unmodified original source.}\end{table}
+
+An example console interaction was also performed with input \code{3 5} followed by \code{q}. The printed board and disc counts matched the expected opening transition. No graphical interface or computer-controlled opponent was implemented or tested.
+
+\section{Complexity and Design Discussion}
+For a conventional $n\times n$ board, capture checking at a single candidate cell traverses at most $8(n-1)$ cells and therefore has $O(n)$ time complexity. Enumerating legal moves examines at most $n^2$ cells, requiring $O(n^3)$ in a straightforward implementation. For the fixed 8-by-8 board, both costs are bounded by small constants. Storing the board needs $O(n^2)$ memory. The candidate-capture function stores at most $O(n)$ coordinate pairs at a time, excluding the board.
+
+The separation between engine and interface makes the extension independently testable and leaves room for another front end in the future. Fixed-size arrays remove the variable-length row issue visible in the original submission. Explicit boundary checks before each board access address the major safety risk in directional scanning. No performance comparison between this design and other Othello engines has been performed.
+
+\section{Limitations and Future Work}
+The corrected engine is a \emph{two-human-player console application}. It does not include an artificial-intelligence player, search algorithms such as minimax, a graphical board, persistence, online play, move history or undo functionality. The automated tests demonstrate specified rules and sampled matches; they do not amount to a formal proof of the full game engine. Potential extensions include a configurable computer opponent, property-based testing of random states, graphical visualization, undo/redo and benchmarking of move generation.
+
+\section{Conclusion}
+The original implementation demonstrates a meaningful attempt to solve a spatial board-game problem through C++ classes, nested containers and directional-search logic. Its structure captures the central move-validation and piece-flipping ideas, but omissions in termination, move passing, and boundary handling prevent treating the submitted version as a fully completed game. The accompanying separate extension shows how the same project can be converted into a reproducible console application by introducing explicit board invariants, safe directional traversal and automated tests. Retaining both versions preserves the distinction between original coursework and subsequently verified engineering work.
+
+\section*{Source and Reproducibility Note}
+The technical interpretation is grounded in the supplied source files \code{Project.1.txt} (C++ program) and \code{Project.pages.txt} (short explanatory notes). The English report, diagrams, engine extension and tests were created subsequently for portfolio presentation. No original course question sheet or measured external benchmark was supplied. See the repository README for exact build and test commands.
+\end{document}

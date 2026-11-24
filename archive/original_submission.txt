@@ -1,0 +1,280 @@
+#include <bits/stdc++.h>
+using namespace std;
+ 
+class Othello
+{
+    vector<vector<char>> board;
+    int player;
+    int winner;
+    unordered_map<char, int> coinsCountOnBoard;
+
+public:
+    Othello()
+    {
+        player = 1;
+        winner = 0;
+        vector<char> temp;
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                temp.push_back('-');
+            }
+            board.push_back(temp);
+        }
+        board[3][3] = 'B';
+        board[3][4] = 'W';
+        board[4][3] = 'W';
+        board[4][4] = 'B';
+        coinsCountOnBoard.insert({'B', 2});
+        coinsCountOnBoard.insert({'W', 2});
+    }
+
+private:
+    bool checkFlip(char colour, int row, int col, int deltaRow, int deltaCol)
+    {
+        char oppColour = 'W';
+        if (colour == 'W')
+        {
+            oppColour = 'B';
+        }
+
+        if ((row <= 0) || (row > 8) || (col <= 0) || (col > 8))
+        {
+            return false;
+        }
+
+        if (board[row-1][col-1] == oppColour)
+        {
+            while ((row > 0) && (row <= 8) && (col > 0) && (col <= 8))
+            {
+                row += deltaRow;
+                col += deltaCol;
+                if (board[row-1][col-1] == '-')
+                {
+                    return false;
+                }
+                if (board[row-1][col-1] == colour)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    void changeCoins(char colour, int row, int col, int deltaRow, int deltaCol)
+    {
+        char oppColour = 'W';
+        if (colour == 'W')
+        {
+            oppColour = 'B';
+        }
+
+        while (board[row-1][col-1] == oppColour)
+        {
+            board[row-1][col-1] = colour;
+            coinsCountOnBoard[colour]++;
+            coinsCountOnBoard[oppColour]--;
+            row += deltaRow;
+            col += deltaCol;
+        }
+        return;
+    }
+
+public:
+    bool isValidMove(int row, int col)
+    {
+        if ((row <= 0) || (row > 8) || (col <= 0) || (col > 8))
+        {
+            return false;
+        }
+
+        if (board[row-1][col-1] != '-')
+        {
+            return false;
+        }
+
+        char colour = 'W';
+        if (getPlayer() == 1)
+        {
+            colour = 'B';
+        }
+
+        // Check Up
+        if (checkFlip(colour, row - 1, col, -1, 0))
+        {
+            return true;
+        }
+        // Check Down
+        if (checkFlip(colour, row + 1, col, 1, 0))
+        {
+            return true;
+        }
+        // Check Left
+        if (checkFlip(colour, row, col - 1, 0, -1))
+        {
+            return true;
+        }
+        // Check Right
+        if (checkFlip(colour, row, col + 1, 0, 1))
+        {
+            return true;
+        }
+        // Check Down-Right
+        if (checkFlip(colour, row + 1, col + 1, 1, 1))
+        {
+            return true;
+        }
+        // Check Down-Left
+        if (checkFlip(colour, row + 1, col - 1, 1, -1))
+        {
+            return true;
+        }
+        // Check Top-Right
+        if (checkFlip(colour, row - 1, col + 1, -1, 1))
+        {
+            return true;
+        }
+        // Check Top-Left
+        if (checkFlip(colour, row - 1, col - 1, -1, -1))
+        {
+            return true;
+        }
+
+        return false;
+    }
+    void makeMove(int row, int col)
+    {
+        char colour = 'W';
+        if (getPlayer() == 1)
+        {
+            colour = 'B';
+        }
+        board[row-1][col-1] = colour;
+       coinsCountOnBoard[colour]++;
+
+        // Check Up
+        if (checkFlip(colour, row - 1, col, -1, 0))
+        {
+            changeCoins(colour, row - 1, col, -1, 0);
+        }
+        // Check Down
+        if (checkFlip(colour, row + 1, col, 1, 0))
+        {
+            changeCoins(colour, row + 1, col, 1, 0);
+        }
+        // Check Left
+        if (checkFlip(colour, row, col - 1, 0, -1))
+        {
+            changeCoins(colour, row, col - 1, 0, -1);
+        }
+        // Check Right
+        if (checkFlip(colour, row, col + 1, 0, 1))
+        {
+            changeCoins(colour, row, col + 1, 0, 1);
+        }
+        // Check Down-Right
+        if (checkFlip(colour, row + 1, col + 1, 1, 1))
+        {
+            changeCoins(colour, row + 1, col + 1, 1, 1);
+        }
+        // Check Down-Left
+        if (checkFlip(colour, row + 1, col - 1, 1, -1))
+        {
+            changeCoins(colour, row + 1, col - 1, 1, -1);
+        }
+        // Check Top-Right
+        if (checkFlip(colour, row - 1, col + 1, -1, 1))
+        {
+            changeCoins(colour, row - 1, col + 1, -1, 1);
+        }
+        // Check Top-Left
+        if (checkFlip(colour, row - 1, col - 1, -1, -1))
+        {
+            changeCoins(colour, row - 1, col - 1, -1, -1);
+        }
+        player = -1 * player;
+        return;
+    }
+    void displayBoard()
+    {
+        cout << "\t1\t2\t3\t4\t5\t6\t7\t8\n";
+       for (int i = 0; i < 8; i++)
+        {
+            cout << i+1 << "\t";
+            for (int j = 0; j < 8; j++)
+            {
+                cout << board[i][j] << "\t";
+            }
+            cout << "\n";
+        }
+        cout << endl;
+        cout << "Black(" << getPlayer() << ") Rank: " << coinsCountOnBoard['B'] << "\n";
+        cout << "White(" << getOppPlayer() << ") Rank: " << coinsCountOnBoard['W'] << "\n";
+        return;
+    }
+    bool isGameOver()
+    {
+        return false;
+    }
+    int getPlayer()
+    {
+        if (player == -1)
+        {
+            return 2;
+        }
+        return player;
+    }
+    int getOppPlayer()
+    {
+        if (player == -1)
+        {
+            return 1;
+        }
+        return 2;
+    }
+    int getWinner()
+    {
+        return winner;
+    }
+};
+
+int main()
+{
+    Othello Game;
+    cout << "\n";
+    Game.displayBoard();
+    int row;
+    int col;
+
+    while (!Game.isGameOver())
+    {
+        cout << "Turn: " << Game.getPlayer() << "\n";
+        cout << "Enter the coordinates: ";
+        cin >> row >> col;
+        
+
+        if (Game.isValidMove(row, col))
+        {
+            Game.makeMove(row, col);
+        }
+        else
+        {
+            cout << "Invalid move. Try again.\n";
+        }
+
+        Game.displayBoard();
+    }
+
+    cout << "Game over :( \n";
+    if (Game.getWinner() != 0)
+    {
+        cout << "The winner is: " << Game.getWinner() << "\n";
+    }
+    else
+    {
+        cout << "The match ended in a draw!\n";
+    }
+
+    return 0;
+}
